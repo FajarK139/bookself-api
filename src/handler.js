@@ -1,7 +1,7 @@
 const { nanoid } = require('nanoid');
 const books = require('./books')
 
-const addBookHandler = (Request, h) => {
+const addBookHandler = (request, h) => {
     const { 
             name, 
             year, 
@@ -26,21 +26,74 @@ const addBookHandler = (Request, h) => {
       publisher, 
       pageCount, 
       readPage, 
+      finished,
       reading,
       insertedAt,
       updateAt,
       };
 
+      if (!name) {
+        const response = h.response({
+          status: 'fail',
+          message: 'Gagal menambahkan buku. Mohon isi nama buku'
+        })
+        .code(400);
+        return response;
+      }
+
+      if (!name) {
+        const response = h.response({
+          status: 'fail',
+          message: 'Gagal menambahkan buku. readPage tidak boleh lebih besar dari pageCount'
+        })
+        .code(400);
+        return response;
+      }
+
     books.push(newBook);
-    const isSuccess = books.filter((book) => book.id === id).length > 0;       
+    const isSuccess = books.filter((book) => book.id === id).length > 0;  
+    if (isSuccess) {
+      const response = h.response({
+          status: 'success',
+          message: 'Buku berhasil ditambahkan',
+          data: {
+            bookId: `${id}`,
+          },
+        })
+        .code(201);
+      return response;
+    }     
 }
 
-const getAllBooksHandler = () => ({
+const getAllBooksHandler = (request, h) => {
+  const { name, reading, finished } = request.query;
+
+  let bookQuery = books;
+
+  if (name) {
+    const nameQuery = name.LowerCase();
+    bookQuery = books.filter((b) => b.name.LowerCase().includes(nameQuery));
+  }
+  if (reading) {
+    bookQuery = books.filter((b) => Number(b.reading) === Number(reading)); 
+  }
+  if (name) {
+    bookQuery = books.filter((b) => Number(b.reading) === Number(reading));
+  }
+
+  const response = h.response({
     status: 'success',
     data: {
-      books,
+        books: bookQuery.map((book) => ({
+        id: book.id,
+        name: book.name,
+        publisher: book.publisher,
+      })),
     },
   });
+  response.code(200);
+  return response;
+};
 
 const getBookByIdHandler = (request, h) => {
   const { id } = request.params;
@@ -48,16 +101,18 @@ const getBookByIdHandler = (request, h) => {
   const book = books.filter((n) => n.id === id)[0];
 
   if (book !== undefined) {
-    return {
+  const response = h.response({
       status: 'success',
       data: {
-        book,
+      book,
       },
-    };
+    });
+    response.code(200);
+    return response;
   }
   const response = h.response({
     status: 'fail',
-    message: 'Catatan tidak ditemukan',
+    message: 'Buku tidak ditemukan',
   });
   response.code(404);
   return response;
@@ -81,7 +136,22 @@ const editBookByIdHandler = (request, h) => {
 
   const index = books.findIndex((book) => book.id === id);
 
-  if (index !== -1) {
+  if (!name) {
+    const response = h.response({
+      status: "fail",
+      message: "Gagal memperbarui buku. Mohon isi nama buku",
+    });
+    response.code(400);
+    return response;
+}   if (readPage > pageCount){
+    const response = h.response({
+      status: "fail",
+      message: "Gagal memperbarui buku. Mohon isi nama buku",
+    })
+    response.code(400);
+    return response;
+  }
+    if (index !== -1) {
     books[index] = {
       ...books[index],
       id,
